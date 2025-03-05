@@ -78,9 +78,9 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.addButton]}
-          onPress={() => navigation.navigate('Add')}
+          onPress={() => navigation.navigate('AddOptions')}
         >
-          <Text style={styles.buttonText}>Add New Card</Text>
+          <Text style={styles.buttonText}>Add Cards</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

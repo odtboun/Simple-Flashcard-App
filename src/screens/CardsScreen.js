@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { getCards, deleteCard } from '../services/cardService';
 import { theme } from '../utils/theme';
 
@@ -75,9 +75,25 @@ export default function CardsScreen({ navigation }) {
       <View style={styles.cardContent}>
         <View style={styles.cardTexts}>
           <Text style={styles.cardLabel}>Front:</Text>
-          <Text style={styles.cardText}>{item.front}</Text>
+          <TextInput
+            style={[styles.cardText, styles.selectableText]}
+            value={item.front}
+            multiline
+            editable={false}
+            selectTextOnFocus={true}
+            contextMenuHidden={false}
+            selectionColor={theme.primary}
+          />
           <Text style={styles.cardLabel}>Back:</Text>
-          <Text style={styles.cardText}>{item.back}</Text>
+          <TextInput
+            style={[styles.cardText, styles.selectableText]}
+            value={item.back}
+            multiline
+            editable={false}
+            selectTextOnFocus={true}
+            contextMenuHidden={false}
+            selectionColor={theme.primary}
+          />
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.statusText}>{getStatusText(item)}</Text>
@@ -172,6 +188,15 @@ const styles = StyleSheet.create({
     color: theme.text,
     fontSize: 16,
     marginBottom: 12,
+    padding: 8,
+    textAlignVertical: 'top',
+  },
+  selectableText: {
+    backgroundColor: theme.surface,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: theme.border,
+    minHeight: 40,
   },
   cardInfo: {
     borderTopWidth: 1,

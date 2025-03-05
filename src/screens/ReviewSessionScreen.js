@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, TextInput } from 'react-native';
 import { getDueCards, updateCardReview } from '../services/cardService';
 import { calculateNextReview } from '../utils/spacedRepetition';
 import { theme } from '../utils/theme';
@@ -82,9 +82,15 @@ export default function ReviewScreen({ navigation }) {
       <View style={styles.cardWrapper}>
         <View style={styles.cardContainer}>
           <View style={styles.card}>
-            <Text style={styles.cardText}>
-              {isFlipped ? cards[currentIndex].back : cards[currentIndex].front}
-            </Text>
+            <TextInput
+              style={[styles.cardText, styles.selectableText]}
+              value={isFlipped ? cards[currentIndex].back : cards[currentIndex].front}
+              multiline
+              editable={false}
+              selectTextOnFocus={true}
+              contextMenuHidden={false}
+              selectionColor={theme.primary}
+            />
           </View>
         </View>
       </View>
@@ -168,6 +174,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: theme.text,
     textAlign: 'center',
+    textAlignVertical: 'center',
+    padding: 10,
+  },
+  selectableText: {
+    backgroundColor: 'transparent',
+    minHeight: 40,
   },
   controlsContainer: {
     width: '100%',

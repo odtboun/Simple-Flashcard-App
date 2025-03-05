@@ -8,7 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import HomeScreen from './src/screens/HomeScreen';
-import AddScreen from './src/screens/AddScreen';
+import AddOptionsScreen from './src/screens/AddOptionsScreen';
+import AddManualScreen from './src/screens/AddManualScreen';
+import ImportScreen from './src/screens/ImportScreen';
 import ReviewHomeScreen from './src/screens/ReviewHomeScreen';
 import ReviewSessionScreen from './src/screens/ReviewSessionScreen';
 import CardsScreen from './src/screens/CardsScreen';
@@ -42,10 +44,24 @@ function HomeStack() {
         }}
       />
       <Stack.Screen 
-        name="Add" 
-        component={AddScreen}
+        name="AddOptions" 
+        component={AddOptionsScreen}
+        options={{
+          title: 'Add Cards'
+        }}
+      />
+      <Stack.Screen 
+        name="AddManual" 
+        component={AddManualScreen}
         options={{
           title: 'Add New Card'
+        }}
+      />
+      <Stack.Screen 
+        name="Import" 
+        component={ImportScreen}
+        options={{
+          title: 'Import Cards'
         }}
       />
       <Stack.Screen 
