@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { getDueCards, updateCardReview } from '../services/cardService';
 import { calculateNextReview } from '../utils/spacedRepetition';
 import { theme } from '../utils/theme';
 
@@ -10,6 +10,7 @@ export default function ReviewScreen({ navigation }) {
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCards();
@@ -17,17 +18,13 @@ export default function ReviewScreen({ navigation }) {
 
   const loadCards = async () => {
     try {
-      const storedCards = await AsyncStorage.getItem('flashcards');
-      if (storedCards) {
-        const parsedCards = JSON.parse(storedCards);
-        const today = new Date();
-        const dueCards = parsedCards.filter(card => 
-          new Date(card.nextReview) <= today
-        );
-        setCards(dueCards);
-      }
+      setLoading(true);
+      const dueCards = await getDueCards();
+      setCards(dueCards);
     } catch (error) {
       console.error('Error loading cards:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,22 +44,11 @@ export default function ReviewScreen({ navigation }) {
     );
 
     try {
-      const storedCards = await AsyncStorage.getItem('flashcards');
-      const allCards = JSON.parse(storedCards);
-      
-      const updatedCard = {
-        ...currentCard,
-        repetitions,
+      await updateCardReview(currentCard.id, {
         easiness,
         interval,
-        nextReview: new Date(Date.now() + interval * 24 * 60 * 60 * 1000).toISOString(),
-      };
-
-      const updatedCards = allCards.map(card =>
-        card.id === currentCard.id ? updatedCard : card
-      );
-
-      await AsyncStorage.setItem('flashcards', JSON.stringify(updatedCards));
+        repetitions,
+      });
 
       if (currentIndex < cards.length - 1) {
         setIsFlipped(false);
@@ -74,6 +60,14 @@ export default function ReviewScreen({ navigation }) {
       console.error('Error updating card:', error);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
 
   if (cards.length === 0) {
     return (
@@ -140,6 +134,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.dark,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cardWrapper: {
     flex: 1,
@@ -227,6 +222,5 @@ const styles = StyleSheet.create({
     color: theme.text,
     fontSize: 20,
     textAlign: 'center',
-    marginTop: 40,
   },
 }); 

@@ -1,28 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { getCards, deleteCard } from '../services/cardService';
 import { theme } from '../utils/theme';
 
 export default function CardsScreen({ navigation }) {
   const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCards();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadCards();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   const loadCards = async () => {
     try {
-      const storedCards = await AsyncStorage.getItem('flashcards');
-      if (storedCards) {
-        const parsedCards = JSON.parse(storedCards);
-        setCards(parsedCards);
-      }
+      setLoading(true);
+      const fetchedCards = await getCards();
+      setCards(fetchedCards);
     } catch (error) {
       console.error('Error loading cards:', error);
+      Alert.alert('Error', 'Failed to load cards');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const deleteCard = async (cardId) => {
+  const handleDeleteCard = async (cardId) => {
     Alert.alert(
       "Delete Card",
       "Are you sure you want to delete this card?",
@@ -36,11 +46,11 @@ export default function CardsScreen({ navigation }) {
           style: "destructive",
           onPress: async () => {
             try {
-              const updatedCards = cards.filter(card => card.id !== cardId);
-              await AsyncStorage.setItem('flashcards', JSON.stringify(updatedCards));
-              setCards(updatedCards);
+              await deleteCard(cardId);
+              setCards(cards.filter(card => card.id !== cardId));
             } catch (error) {
               console.error('Error deleting card:', error);
+              Alert.alert('Error', 'Failed to delete card');
             }
           }
         }
@@ -49,7 +59,7 @@ export default function CardsScreen({ navigation }) {
   };
 
   const getStatusText = (card) => {
-    const nextReview = new Date(card.nextReview);
+    const nextReview = new Date(card.next_review);
     const today = new Date();
     
     if (nextReview <= today) {
@@ -86,13 +96,21 @@ export default function CardsScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => deleteCard(item.id)}
+          onPress={() => handleDeleteCard(item.id)}
         >
           <Text style={styles.actionButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -114,6 +132,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.dark,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.dark,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContainer: {
     padding: 16,
