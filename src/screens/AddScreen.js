@@ -1,37 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { createCard } from '../services/cardService';
 import { theme } from '../utils/theme';
 
 export default function AddScreen({ navigation }) {
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const saveCard = async () => {
-    if (!front.trim() || !back.trim()) return;
+    if (!front.trim() || !back.trim()) {
+      Alert.alert('Error', 'Both front and back text are required');
+      return;
+    }
 
     try {
-      const existingCards = await AsyncStorage.getItem('flashcards');
-      const cards = existingCards ? JSON.parse(existingCards) : [];
-      
-      const newCard = {
-        id: Date.now().toString(),
-        front,
-        back,
-        repetitions: 0,
-        easiness: 2.5,
-        interval: 1,
-        nextReview: new Date().toISOString(),
-      };
-
-      cards.push(newCard);
-      await AsyncStorage.setItem('flashcards', JSON.stringify(cards));
+      setLoading(true);
+      await createCard({
+        front: front.trim(),
+        back: back.trim(),
+      });
       
       setFront('');
       setBack('');
       navigation.goBack();
     } catch (error) {
       console.error('Error saving card:', error);
+      Alert.alert('Error', 'Failed to save card');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,6 +40,8 @@ export default function AddScreen({ navigation }) {
         placeholderTextColor={theme.textSecondary}
         value={front}
         onChangeText={setFront}
+        multiline
+        editable={!loading}
       />
       <TextInput
         style={styles.input}
@@ -50,9 +49,17 @@ export default function AddScreen({ navigation }) {
         placeholderTextColor={theme.textSecondary}
         value={back}
         onChangeText={setBack}
+        multiline
+        editable={!loading}
       />
-      <TouchableOpacity style={styles.button} onPress={saveCard}>
-        <Text style={styles.buttonText}>Save Card</Text>
+      <TouchableOpacity 
+        style={[styles.button, loading && styles.buttonDisabled]} 
+        onPress={saveCard}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>
+          {loading ? 'Saving...' : 'Save Card'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -61,26 +68,32 @@ export default function AddScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: theme.dark,
+    padding: 20,
   },
   input: {
     backgroundColor: theme.surface,
-    color: theme.text,
-    padding: 15,
     borderRadius: 8,
-    marginBottom: 15,
+    padding: 15,
+    marginBottom: 16,
+    color: theme.text,
     fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   button: {
     backgroundColor: theme.primary,
-    padding: 15,
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: theme.dark,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
 }); 

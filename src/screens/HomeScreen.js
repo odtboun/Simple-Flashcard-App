@@ -1,62 +1,81 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCards, getDueCards } from '../services/cardService';
 import { theme } from '../utils/theme';
 
 export default function HomeScreen({ navigation }) {
   const [dueCount, setDueCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
+  const loadCounts = async () => {
+    console.log('Starting loadCounts...');
+    try {
+      setLoading(true);
+      
+      console.log('Fetching cards data...');
+      const allCards = await getCards();
+      console.log('All cards received:', allCards);
+      
+      console.log('Fetching due cards...');
+      const dueCardsData = await getDueCards();
+      console.log('Due cards received:', dueCardsData);
+      
+      console.log('Updating counts:', {
+        total: allCards.length,
+        due: dueCardsData.length
+      });
+      
+      setTotalCount(allCards.length);
+      setDueCount(dueCardsData.length);
+      
+      // Verify state updates
+      console.log('State should be updated to:', {
+        totalCount: allCards.length,
+        dueCount: dueCardsData.length
+      });
+    } catch (error) {
+      console.error('Error in loadCounts:', error);
+    } finally {
+      setLoading(false);
+      console.log('LoadCounts completed');
+    }
+  };
+
+  // Load counts on mount
   useEffect(() => {
+    console.log('Mount effect triggered');
+    loadCounts();
+  }, []);
+
+  // Load counts on focus
+  useEffect(() => {
+    console.log('Focus effect setup');
     const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Screen focused, reloading counts');
       loadCounts();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  const loadCounts = async () => {
-    try {
-      const storedCards = await AsyncStorage.getItem('flashcards');
-      if (storedCards) {
-        const cards = JSON.parse(storedCards);
-        const today = new Date();
-        const dueCards = cards.filter(card => new Date(card.nextReview) <= today);
-        setDueCount(dueCards.length);
-        setTotalCount(cards.length);
-      } else {
-        setDueCount(0);
-        setTotalCount(0);
-      }
-    } catch (error) {
-      console.error('Error loading cards:', error);
-    }
-  };
+  // Debug render
+  console.log('Rendering HomeScreen with state:', { totalCount, dueCount, loading });
 
   return (
     <View style={styles.container}>
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{totalCount}</Text>
+          <Text style={styles.statNumber}>{loading ? '-' : totalCount}</Text>
           <Text style={styles.statLabel}>Total Cards</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{dueCount}</Text>
+          <Text style={styles.statNumber}>{loading ? '-' : dueCount}</Text>
           <Text style={styles.statLabel}>Due Today</Text>
         </View>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.reviewButton]}
-          onPress={() => navigation.navigate('Review')}
-          disabled={dueCount === 0}
-        >
-          <Text style={styles.buttonText}>
-            {dueCount === 0 ? 'No Cards Due' : `Review ${dueCount} Cards`}
-          </Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.button, styles.addButton]}
           onPress={() => navigation.navigate('Add')}
@@ -118,9 +137,6 @@ const styles = StyleSheet.create({
     color: theme.dark,
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  reviewButton: {
-    backgroundColor: theme.primary,
   },
   addButton: {
     backgroundColor: '#66BB6A',

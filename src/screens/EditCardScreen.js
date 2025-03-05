@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateCard } from '../services/cardService';
 import { theme } from '../utils/theme';
 
 export default function EditCardScreen({ route, navigation }) {
   const { card } = route.params;
   const [front, setFront] = useState(card.front);
   const [back, setBack] = useState(card.back);
+  const [loading, setLoading] = useState(false);
 
   const saveCard = async () => {
     if (!front.trim() || !back.trim()) {
@@ -15,20 +16,17 @@ export default function EditCardScreen({ route, navigation }) {
     }
 
     try {
-      const storedCards = await AsyncStorage.getItem('flashcards');
-      const cards = JSON.parse(storedCards);
-      
-      const updatedCards = cards.map(c => 
-        c.id === card.id 
-          ? { ...c, front: front.trim(), back: back.trim() }
-          : c
-      );
-
-      await AsyncStorage.setItem('flashcards', JSON.stringify(updatedCards));
+      setLoading(true);
+      await updateCard(card.id, {
+        front: front.trim(),
+        back: back.trim(),
+      });
       navigation.goBack();
     } catch (error) {
       console.error('Error saving card:', error);
       Alert.alert('Error', 'Failed to save card');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,6 +41,7 @@ export default function EditCardScreen({ route, navigation }) {
           placeholder="Front text"
           placeholderTextColor={theme.textSecondary}
           multiline
+          editable={!loading}
         />
       </View>
 
@@ -55,11 +54,18 @@ export default function EditCardScreen({ route, navigation }) {
           placeholder="Back text"
           placeholderTextColor={theme.textSecondary}
           multiline
+          editable={!loading}
         />
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={saveCard}>
-        <Text style={styles.saveButtonText}>Save Changes</Text>
+      <TouchableOpacity 
+        style={[styles.saveButton, loading && styles.buttonDisabled]} 
+        onPress={saveCard}
+        disabled={loading}
+      >
+        <Text style={styles.saveButtonText}>
+          {loading ? 'Saving...' : 'Save Changes'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -95,6 +101,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   saveButtonText: {
     color: theme.dark,
