@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, TextInput } from 'react-native';
 import { getDueCards, updateCardReview } from '../services/cardService';
+import { getDueCardsInDeck } from '../services/deckService';
 import { calculateNextReview } from '../utils/spacedRepetition';
 import { theme } from '../utils/theme';
 
 const { width } = Dimensions.get('window');
 
-export default function ReviewScreen({ navigation }) {
+export default function ReviewScreen({ route, navigation }) {
+  const deckId = route.params?.deckId;
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -19,7 +21,9 @@ export default function ReviewScreen({ navigation }) {
   const loadCards = async () => {
     try {
       setLoading(true);
-      const dueCards = await getDueCards();
+      const dueCards = deckId 
+        ? await getDueCardsInDeck(deckId)
+        : await getDueCards();
       setCards(dueCards);
     } catch (error) {
       console.error('Error loading cards:', error);
@@ -79,6 +83,12 @@ export default function ReviewScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.progress}>
+        <Text style={styles.progressText}>
+          Card {currentIndex + 1} of {cards.length}
+        </Text>
+      </View>
+
       <View style={styles.cardWrapper}>
         <View style={styles.cardContainer}>
           <View style={styles.card}>
@@ -139,26 +149,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.dark,
+  },
+  progress: {
+    padding: 16,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  progressText: {
+    color: theme.text,
+    fontSize: 16,
   },
   cardWrapper: {
     flex: 1,
-    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    padding: 16,
   },
   cardContainer: {
-    width: width - 40,
-    height: 300,
-  },
-  card: {
-    width: '100%',
-    height: '100%',
+    width: width - 32,
+    aspectRatio: 3/2,
     backgroundColor: theme.surface,
-    borderRadius: 10,
-    elevation: 5,
+    borderRadius: 12,
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -166,57 +177,50 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    alignItems: 'center',
+  },
+  card: {
+    flex: 1,
+    padding: 16,
     justifyContent: 'center',
-    padding: 20,
   },
   cardText: {
-    fontSize: 24,
     color: theme.text,
+    fontSize: 20,
     textAlign: 'center',
-    textAlignVertical: 'center',
-    padding: 10,
   },
   selectableText: {
-    backgroundColor: 'transparent',
-    minHeight: 40,
+    padding: 16,
   },
   controlsContainer: {
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    padding: 16,
   },
   flipButton: {
-    backgroundColor: theme.primary,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+    backgroundColor: theme.surface,
+    padding: 16,
     borderRadius: 8,
-    marginVertical: 20,
     alignItems: 'center',
-    alignSelf: 'center',
-    width: '60%',
+    marginBottom: 16,
   },
   flipButtonText: {
-    color: theme.dark,
+    color: theme.text,
     fontSize: 18,
     fontWeight: 'bold',
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
   },
   responseButton: {
     flex: 1,
-    paddingVertical: 15,
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 5,
+    marginHorizontal: 4,
   },
   responseButtonText: {
     color: theme.dark,
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
   },
   againButton: {
     backgroundColor: theme.error,
@@ -225,14 +229,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFA726',
   },
   goodButton: {
-    backgroundColor: '#66BB6A',
+    backgroundColor: theme.primary,
   },
   easyButton: {
-    backgroundColor: '#29B6F6',
+    backgroundColor: '#66BB6A',
   },
   noCards: {
     color: theme.text,
-    fontSize: 20,
+    fontSize: 18,
     textAlign: 'center',
+    marginTop: 40,
   },
 }); 

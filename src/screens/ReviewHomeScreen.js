@@ -5,37 +5,56 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
+import { getDueDecks } from '../services/deckService';
 import { getDueCards } from '../services/cardService';
 import { theme } from '../utils/theme';
 
 export default function ReviewHomeScreen({ navigation }) {
-  const [dueCount, setDueCount] = useState(0);
+  const [dueDecks, setDueDecks] = useState([]);
+  const [totalDueCards, setTotalDueCards] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDueCards();
+    loadDueData();
   }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      loadDueCards();
+      loadDueData();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  const loadDueCards = async () => {
+  const loadDueData = async () => {
     try {
       setLoading(true);
-      const dueCards = await getDueCards();
-      setDueCount(dueCards.length);
+      const [decks, cards] = await Promise.all([
+        getDueDecks(),
+        getDueCards(),
+      ]);
+      setDueDecks(decks);
+      setTotalDueCards(cards.length);
     } catch (error) {
-      console.error('Error loading due cards:', error);
+      console.error('Error loading due data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const renderDeck = ({ item }) => (
+    <TouchableOpacity
+      style={styles.deckItem}
+      onPress={() => navigation.navigate('ReviewSession', { deckId: item.id })}
+    >
+      <View style={styles.deckContent}>
+        <Text style={styles.deckName}>{item.name}</Text>
+        <Text style={styles.dueCount}>{item.due_cards} cards due</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   if (loading) {
     return (
@@ -45,28 +64,43 @@ export default function ReviewHomeScreen({ navigation }) {
     );
   }
 
+  if (totalDueCards === 0) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.noCards}>No cards due for review!</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {dueCount === 0 ? (
-          <Text style={styles.noCards}>No cards due for review!</Text>
-        ) : (
-          <>
-            <Text style={styles.title}>Time to review!</Text>
-            <Text style={styles.subtitle}>
-              You have {dueCount} card{dueCount === 1 ? '' : 's'} due for review
-            </Text>
-            <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={() => navigation.navigate('ReviewSession')}
-            >
-              <Text style={styles.reviewButtonText}>
-                Review {dueCount} Card{dueCount === 1 ? '' : 's'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
+      <View style={styles.header}>
+        <Text style={styles.title}>Time to review!</Text>
+        <Text style={styles.subtitle}>
+          You have {totalDueCards} card{totalDueCards === 1 ? '' : 's'} due for review
+        </Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.reviewAllButton}
+        onPress={() => navigation.navigate('ReviewSession')}
+      >
+        <Text style={styles.reviewAllButtonText}>
+          Review All Due Cards ({totalDueCards})
+        </Text>
+      </TouchableOpacity>
+
+      {dueDecks.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Review by Deck</Text>
+          <FlatList
+            data={dueDecks}
+            renderItem={renderDeck}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContainer}
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -75,55 +109,68 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.dark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
-  content: {
-    backgroundColor: theme.surface,
-    borderRadius: 10,
+  header: {
     padding: 20,
-    width: '100%',
-    maxWidth: 400,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
   title: {
     fontSize: 24,
-    color: theme.text,
     fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
+    color: theme.text,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: theme.textSecondary,
-    marginBottom: 20,
     textAlign: 'center',
   },
-  reviewButton: {
+  reviewAllButton: {
     backgroundColor: theme.primary,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+    margin: 20,
+    padding: 16,
     borderRadius: 8,
-    width: '100%',
     alignItems: 'center',
   },
-  reviewButtonText: {
+  reviewAllButtonText: {
     color: theme.dark,
     fontSize: 18,
     fontWeight: 'bold',
   },
-  noCards: {
-    fontSize: 18,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: theme.text,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  listContainer: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  deckItem: {
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  deckContent: {
+    padding: 16,
+  },
+  deckName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.text,
+    marginBottom: 4,
+  },
+  dueCount: {
+    fontSize: 14,
+    color: theme.textSecondary,
+  },
+  noCards: {
+    color: theme.text,
+    fontSize: 18,
     textAlign: 'center',
   },
 }); 

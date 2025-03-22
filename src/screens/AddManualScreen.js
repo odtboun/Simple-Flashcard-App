@@ -3,7 +3,8 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'reac
 import { createCard } from '../services/cardService';
 import { theme } from '../utils/theme';
 
-export default function AddScreen({ navigation }) {
+export default function AddScreen({ route, navigation }) {
+  const { deckId } = route.params;
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +20,7 @@ export default function AddScreen({ navigation }) {
       await createCard({
         front: front.trim(),
         back: back.trim(),
+        deck_id: deckId,
       });
       
       setFront('');

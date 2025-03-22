@@ -8,8 +8,15 @@ export async function getCards() {
 
   const { data, error } = await supabase
     .from('cards')
-    .select('*')
-    .eq('user_id', user.id);
+    .select(`
+      *,
+      deck:deck_id (
+        id,
+        name
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching cards:', error);
@@ -21,7 +28,7 @@ export async function getCards() {
   return data || [];
 }
 
-export async function getDueCards() {
+export async function getDueCards(deckIds = null) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No user found');
 
@@ -31,11 +38,24 @@ export async function getDueCards() {
   const now = new Date().toISOString();
   console.log('Current time:', now);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('cards')
-    .select('*')
+    .select(`
+      *,
+      deck:deck_id (
+        id,
+        name
+      )
+    `)
     .eq('user_id', user.id)
     .lte('next_review', now);
+
+  // If specific decks are requested, filter by those deck IDs
+  if (deckIds && deckIds.length > 0) {
+    query = query.in('deck_id', deckIds);
+  }
+
+  const { data, error } = await query.order('next_review', { ascending: true });
 
   if (error) {
     console.error('Error fetching due cards:', error);
@@ -47,7 +67,7 @@ export async function getDueCards() {
   return data || [];
 }
 
-export async function createCard({ front, back }) {
+export async function createCard({ front, back, deck_id }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No user found');
 
@@ -58,6 +78,7 @@ export async function createCard({ front, back }) {
     .from('cards')
     .insert([{
       user_id: user.id,
+      deck_id,
       front,
       back,
       easiness: 2.5,
@@ -65,7 +86,13 @@ export async function createCard({ front, back }) {
       interval: 1,
       next_review: now, // Set to current time to make immediately reviewable
     }])
-    .select()
+    .select(`
+      *,
+      deck:deck_id (
+        id,
+        name
+      )
+    `)
     .single();
 
   if (error) {
@@ -86,7 +113,13 @@ export async function updateCard(id, updates) {
     .update(updates)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select()
+    .select(`
+      *,
+      deck:deck_id (
+        id,
+        name
+      )
+    `)
     .single();
 
   if (error) {
@@ -133,11 +166,43 @@ export async function updateCardReview(id, { easiness, interval, repetitions }) 
     })
     .eq('id', id)
     .eq('user_id', user.id)
-    .select()
+    .select(`
+      *,
+      deck:deck_id (
+        id,
+        name
+      )
+    `)
     .single();
 
   if (error) {
     console.error('Error updating card review:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function moveCardToDeck(cardId, newDeckId) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No user found');
+
+  const { data, error } = await supabase
+    .from('cards')
+    .update({ deck_id: newDeckId })
+    .eq('id', cardId)
+    .eq('user_id', user.id)
+    .select(`
+      *,
+      deck:deck_id (
+        id,
+        name
+      )
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error moving card to deck:', error);
     throw error;
   }
 

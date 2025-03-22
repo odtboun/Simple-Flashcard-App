@@ -17,6 +17,10 @@ import CardsScreen from './src/screens/CardsScreen';
 import EditCardScreen from './src/screens/EditCardScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import DeckDetailScreen from './src/screens/DeckDetailScreen';
+import CreateDeckScreen from './src/screens/CreateDeckScreen';
+import DeckSelectionScreen from './src/screens/DeckSelectionScreen';
+import EditDeckScreen from './src/screens/EditDeckScreen';
 import { theme } from './src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -51,6 +55,13 @@ function HomeStack() {
         }}
       />
       <Stack.Screen 
+        name="DeckSelection" 
+        component={DeckSelectionScreen}
+        options={{
+          title: 'Select Deck'
+        }}
+      />
+      <Stack.Screen 
         name="AddManual" 
         component={AddManualScreen}
         options={{
@@ -76,6 +87,27 @@ function HomeStack() {
         component={EditCardScreen}
         options={{
           title: 'Edit Card'
+        }}
+      />
+      <Stack.Screen 
+        name="DeckDetail" 
+        component={DeckDetailScreen}
+        options={({ route }) => ({
+          title: route.params?.deck?.name || 'Deck Details'
+        })}
+      />
+      <Stack.Screen 
+        name="CreateDeck" 
+        component={CreateDeckScreen}
+        options={{
+          title: 'Create New Deck'
+        }}
+      />
+      <Stack.Screen 
+        name="EditDeck" 
+        component={EditDeckScreen}
+        options={{
+          title: 'Edit Deck'
         }}
       />
     </Stack.Navigator>

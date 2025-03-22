@@ -15,7 +15,8 @@ import Papa from 'papaparse';
 import { theme } from '../utils/theme';
 import { createCard } from '../services/cardService';
 
-export default function ImportScreen({ navigation }) {
+export default function ImportScreen({ route, navigation }) {
+  const { deckId } = route.params;
   const [loading, setLoading] = useState(false);
   const [cards, setCards] = useState([]);
   const [importing, setImporting] = useState(false);
@@ -87,7 +88,10 @@ export default function ImportScreen({ navigation }) {
 
       // Import cards one by one to show progress
       for (const card of cards) {
-        await createCard(card);
+        await createCard({
+          ...card,
+          deck_id: deckId,
+        });
         imported++;
         setProgress((imported / cards.length) * 100);
       }
@@ -154,29 +158,26 @@ export default function ImportScreen({ navigation }) {
               </View>
             ))}
           </ScrollView>
-          {importing ? (
-            <View style={styles.progressContainer}>
-              <ActivityIndicator color={theme.primary} />
-              <Text style={styles.progressText}>
-                Importing... {Math.round(progress)}%
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.actionButtons}>
+
+          <View style={styles.importButtonContainer}>
+            {importing ? (
+              <View style={styles.progressContainer}>
+                <ActivityIndicator color={theme.primary} style={styles.progressIndicator} />
+                <Text style={styles.progressText}>
+                  Importing... {Math.round(progress)}%
+                </Text>
+              </View>
+            ) : (
               <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => setCards([])}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.importButton]}
+                style={styles.importButton}
                 onPress={importCards}
               >
-                <Text style={styles.buttonText}>Import Cards</Text>
+                <Text style={styles.importButtonText}>
+                  Import {cards.length} Cards
+                </Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </View>
         </View>
       )}
     </View>
@@ -256,27 +257,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
   },
-  actionButtons: {
+  importButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
   },
-  button: {
+  importButton: {
     flex: 1,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 5,
   },
-  cancelButton: {
-    backgroundColor: theme.error,
-  },
-  importButton: {
-    backgroundColor: theme.primary,
-  },
-  buttonText: {
+  importButtonText: {
     color: theme.dark,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  progressIndicator: {
+    marginRight: 10,
   },
 }); 

@@ -1,92 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   FlatList,
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCards, getDueCards } from '../services/cardService';
 import { getDecks, deleteDeck } from '../services/deckService';
 import { theme } from '../utils/theme';
 
-export default function HomeScreen({ navigation }) {
-  const [dueCount, setDueCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
+export default function DeckListScreen({ navigation }) {
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up the header right button
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={showOptions}
-          style={styles.headerButton}
-        >
-          <Ionicons name="add" size={24} color={theme.text} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
-
-  useEffect(() => {
-    loadData();
+    loadDecks();
   }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      loadData();
+      loadDecks();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  const loadData = async () => {
+  const loadDecks = async () => {
     try {
       setLoading(true);
-      const [allCards, dueCardsData, decksData] = await Promise.all([
-        getCards(),
-        getDueCards(),
-        getDecks(),
-      ]);
-      
-      setTotalCount(allCards.length);
-      setDueCount(dueCardsData.length);
-      setDecks(decksData);
+      const fetchedDecks = await getDecks();
+      setDecks(fetchedDecks);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading decks:', error);
+      Alert.alert('Error', 'Failed to load decks');
     } finally {
       setLoading(false);
     }
-  };
-
-  const showOptions = () => {
-    Alert.alert(
-      "Options",
-      "Choose an action",
-      [
-        {
-          text: "Create Deck",
-          onPress: () => navigation.navigate('CreateDeck')
-        },
-        {
-          text: "Add Cards Manually",
-          onPress: () => navigation.navigate('DeckSelection', { mode: 'manual' })
-        },
-        {
-          text: "Import Cards",
-          onPress: () => navigation.navigate('DeckSelection', { mode: 'import' })
-        },
-        {
-          text: "Cancel",
-          style: "cancel"
-        }
-      ]
-    );
   };
 
   const handleDeleteDeck = async (deckId) => {
@@ -146,6 +98,14 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.statNumber}>{item.due_cards}</Text>
             <Text style={styles.statLabel}>Due Today</Text>
           </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {item.last_reviewed_at
+                ? new Date(item.last_reviewed_at).toLocaleDateString()
+                : 'Never'}
+            </Text>
+            <Text style={styles.statLabel}>Last Review</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -161,19 +121,6 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{totalCount}</Text>
-          <Text style={styles.statLabel}>Total Cards</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{dueCount}</Text>
-          <Text style={styles.statLabel}>Due Today</Text>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>My Decks</Text>
-      
       <FlatList
         data={decks}
         renderItem={renderDeck}
@@ -188,6 +135,13 @@ export default function HomeScreen({ navigation }) {
           </View>
         }
       />
+      
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('CreateDeck')}
+      >
+        <Ionicons name="add" size={24} color={theme.dark} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -197,47 +151,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.dark,
   },
-  headerButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 20,
-  },
-  statBox: {
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-    padding: 20,
-    borderRadius: 10,
-    minWidth: 140,
-  },
-  statNumber: {
-    color: theme.primary,
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  statLabel: {
-    color: theme.text,
-    fontSize: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginHorizontal: 20,
-    marginBottom: 12,
-  },
   listContainer: {
-    padding: 20,
-    paddingTop: 0,
+    padding: 16,
+    paddingBottom: 80,
   },
   deckItem: {
     backgroundColor: theme.surface,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   deckContent: {
@@ -250,7 +171,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   deckName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: theme.text,
     flex: 1,
@@ -265,13 +186,24 @@ const styles = StyleSheet.create({
   },
   deckStats: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     borderTopWidth: 1,
     borderTopColor: theme.border,
     paddingTop: 16,
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.primary,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: theme.textSecondary,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -288,5 +220,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.textSecondary,
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 }); 

@@ -9,29 +9,42 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../utils/theme';
 
 export default function AddOptionsScreen({ navigation }) {
+  const handleOptionSelect = (screen) => {
+    navigation.navigate('DeckSelection', {
+      onDeckSelect: (deck) => {
+        navigation.navigate(screen, { deckId: deck.id });
+      }
+    });
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={[styles.option, styles.manualOption]}
-        onPress={() => navigation.navigate('AddManual')}
+        style={styles.option}
+        onPress={() => handleOptionSelect('AddManual')}
       >
-        <Ionicons name="create" size={32} color={theme.dark} />
-        <Text style={styles.optionTitle}>Add Cards Manually</Text>
-        <Text style={styles.optionDescription}>
-          Create cards one by one with custom content
-        </Text>
+        <Ionicons name="create-outline" size={24} color={theme.text} />
+        <View style={styles.optionContent}>
+          <Text style={styles.optionTitle}>Add Manually</Text>
+          <Text style={styles.optionDescription}>
+            Create cards one by one
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.option, styles.importOption]}
-        onPress={() => navigation.navigate('Import')}
+        style={styles.option}
+        onPress={() => handleOptionSelect('Import')}
       >
-        <Ionicons name="document" size={32} color={theme.dark} />
-        <Text style={styles.optionTitle}>Import from CSV</Text>
-        <Text style={styles.optionDescription}>
-          Bulk import cards from a CSV file{'\n'}
-          (2 columns: front text, back text)
-        </Text>
+        <Ionicons name="document-outline" size={24} color={theme.text} />
+        <View style={styles.optionContent}>
+          <Text style={styles.optionTitle}>Import from CSV</Text>
+          <Text style={styles.optionDescription}>
+            Import multiple cards from a CSV file
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
       </TouchableOpacity>
     </View>
   );
@@ -41,41 +54,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.dark,
-    padding: 20,
-    justifyContent: 'center',
+    padding: 16,
   },
   option: {
-    backgroundColor: theme.surface,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    backgroundColor: theme.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  manualOption: {
-    backgroundColor: theme.primary,
-  },
-  importOption: {
-    backgroundColor: '#66BB6A', // A nice green color
+  optionContent: {
+    flex: 1,
+    marginLeft: 16,
   },
   optionTitle: {
-    color: theme.dark,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 12,
-    marginBottom: 8,
+    color: theme.text,
+    marginBottom: 4,
   },
   optionDescription: {
-    color: theme.dark,
     fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.8,
+    color: theme.textSecondary,
   },
 }); 
