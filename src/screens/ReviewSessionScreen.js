@@ -70,21 +70,16 @@ export default function ReviewSessionScreen({ route, navigation }) {
       return;
     }
 
-    // Set the preloaded next card as current
-    setCurrentCard(nextCard);
-    // Reset reveal state for new card
+    // First, ensure we're showing the front
     setIsRevealed(false);
     
-    // Update the queue
-    const remainingCards = dueCards.slice(1);
-    setDueCards(remainingCards);
-    
-    // Preload the next card if available
-    if (remainingCards.length > 0) {
-      setNextCard(remainingCards[0]);
-    } else {
-      setNextCard(null);
-    }
+    // Use a slight delay to ensure isRevealed is processed first
+    setTimeout(() => {
+      setCurrentCard(nextCard);
+      const remainingCards = dueCards.slice(1);
+      setDueCards(remainingCards);
+      setNextCard(remainingCards.length > 0 ? remainingCards[0] : null);
+    }, 50);
   };
 
   const handleRate = async (rating) => {
@@ -144,41 +139,47 @@ export default function ReviewSessionScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <Flashcard
-        front={currentCard.front}
-        back={currentCard.back}
-        isRevealed={isRevealed}
-        onPress={() => setIsRevealed(!isRevealed)}
-      />
+      <View style={styles.cardSection}>
+        <Flashcard
+          front={currentCard.front}
+          back={currentCard.back}
+          isRevealed={isRevealed}
+          onPress={() => setIsRevealed(!isRevealed)}
+        />
+      </View>
       
-      {isRevealed && (
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.ratingButton, styles.againButton]}
-            onPress={() => handleRate(FsrsRating.Again)}
-          >
-            <Text style={styles.buttonText}>Again</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ratingButton, styles.hardButton]}
-            onPress={() => handleRate(FsrsRating.Hard)}
-          >
-            <Text style={styles.buttonText}>Hard</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ratingButton, styles.goodButton]}
-            onPress={() => handleRate(FsrsRating.Good)}
-          >
-            <Text style={styles.buttonText}>Good</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ratingButton, styles.easyButton]}
-            onPress={() => handleRate(FsrsRating.Easy)}
-          >
-            <Text style={styles.buttonText}>Easy</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={styles.buttonSection}>
+        {isRevealed ? (
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.ratingButton, styles.againButton]}
+              onPress={() => handleRate(FsrsRating.Again)}
+            >
+              <Text style={styles.buttonText}>Again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.ratingButton, styles.hardButton]}
+              onPress={() => handleRate(FsrsRating.Hard)}
+            >
+              <Text style={styles.buttonText}>Hard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.ratingButton, styles.goodButton]}
+              onPress={() => handleRate(FsrsRating.Good)}
+            >
+              <Text style={styles.buttonText}>Good</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.ratingButton, styles.easyButton]}
+              onPress={() => handleRate(FsrsRating.Easy)}
+            >
+              <Text style={styles.buttonText}>Easy</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.buttonContainer} />
+        )}
+      </View>
     </View>
   );
 }
@@ -187,8 +188,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.dark,
+  },
+  cardSection: {
+    flex: 1,
     padding: 16,
-    justifyContent: 'center',
+  },
+  buttonSection: {
+    paddingBottom: 16,
   },
   message: {
     color: theme.text,
@@ -210,8 +216,8 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
     paddingHorizontal: 16,
+    height: 56, // Fixed height for button container
   },
   ratingButton: {
     flex: 1,
