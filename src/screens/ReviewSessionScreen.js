@@ -18,77 +18,105 @@ import {
 } from '../services/fsrsService';
 import { getDueCardsInDeck } from '../services/deckService';
 import Flashcard from '../components/Flashcard';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function ReviewSessionScreen({ route, navigation }) {
   const { deckId } = route.params;
   const { user } = useUser();
   const [currentCard, setCurrentCard] = useState(null);
+  const [nextCard, setNextCard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [dueCards, setDueCards] = useState([]);
 
   useEffect(() => {
-    loadNextCard();
+    loadInitialCards();
   }, []);
 
-  const loadNextCard = async () => {
+  const loadInitialCards = async () => {
     try {
       setIsLoading(true);
       const cards = await getDueCardsInDeck(deckId);
 
       if (cards && cards.length > 0) {
-        setCurrentCard(cards[0]);
+        setDueCards(cards.slice(1)); // Store all cards except the first one
+        setCurrentCard(cards[0]); // Set first card as current
+        if (cards.length > 1) {
+          setNextCard(cards[1]); // Preload next card if available
+        }
       } else {
         Alert.alert(
           'Review Complete',
           'No more cards due for review in this deck!',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          [{ text: 'OK', onPress: () => navigation.navigate('ReviewHome') }]
         );
       }
     } catch (error) {
-      console.error('Error loading next card:', error);
-      Alert.alert('Error', 'Failed to load next card');
+      console.error('Error loading cards:', error);
+      Alert.alert('Error', 'Failed to load cards');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const moveToNextCard = () => {
+    if (dueCards.length === 0) {
+      // No more cards
+      Alert.alert(
+        'Review Complete',
+        'No more cards due for review in this deck!',
+        [{ text: 'OK', onPress: () => navigation.navigate('ReviewHome') }]
+      );
+      return;
+    }
+
+    // Set the preloaded next card as current
+    setCurrentCard(nextCard);
+    // Reset reveal state for new card
+    setIsRevealed(false);
+    
+    // Update the queue
+    const remainingCards = dueCards.slice(1);
+    setDueCards(remainingCards);
+    
+    // Preload the next card if available
+    if (remainingCards.length > 0) {
+      setNextCard(remainingCards[0]);
+    } else {
+      setNextCard(null);
+    }
+  };
+
   const handleRate = async (rating) => {
+    const cardToUpdate = currentCard;
+    
+    // Immediately show next card
+    moveToNextCard();
+
+    // Handle the scheduling in the background
     try {
-      setIsLoading(true);
-      
       // Prepare card data for FSRS
       const fsrsCard = {
-        due: currentCard.due || new Date().toISOString(),
-        stability: currentCard.stability || 0,
-        difficulty: currentCard.difficulty || 0,
-        elapsed_days: currentCard.elapsed_days || 0,
-        scheduled_days: currentCard.scheduled_days || 0,
-        reps: currentCard.reps || 0,
-        lapses: currentCard.lapses || 0,
-        state: currentCard.state || 'New',
+        due: cardToUpdate.due || new Date().toISOString(),
+        stability: cardToUpdate.stability || 0,
+        difficulty: cardToUpdate.difficulty || 0,
+        elapsed_days: cardToUpdate.elapsed_days || 0,
+        scheduled_days: cardToUpdate.scheduled_days || 0,
+        reps: cardToUpdate.reps || 0,
+        lapses: cardToUpdate.lapses || 0,
+        state: cardToUpdate.state || 'New',
       };
       
       // Get scheduling info from FSRS
       const schedulingInfo = scheduleCardWithRating(fsrsCard, rating);
       
-      // Update card first
-      await updateCardSchedule(currentCard.id, schedulingInfo);
-      
-      // Then create review log
-      await createReviewLog(currentCard.id, rating, schedulingInfo);
-      
-      // Load next card
-      setIsRevealed(false);
-      await loadNextCard();
+      // Update card in the background
+      await updateCardSchedule(cardToUpdate.id, schedulingInfo);
+      await createReviewLog(cardToUpdate.id, rating, schedulingInfo);
     } catch (error) {
-      console.error('Error rating card:', error);
-      if (error.code === 'PGRST116') {
-        Alert.alert('Error', 'Could not find the card to update. Please try again.');
-      } else {
-        Alert.alert('Error', 'Failed to save review. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
+      console.error('Error updating card schedule:', error);
+      // We don't show an alert here since we've already moved to the next card
+      // Instead, we could implement a toast or snackbar to show non-blocking errors
     }
   };
 
@@ -106,9 +134,9 @@ export default function ReviewSessionScreen({ route, navigation }) {
         <Text style={styles.message}>No cards due for review!</Text>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('ReviewHome')}
         >
-          <Text style={styles.buttonText}>Return to Deck</Text>
+          <Text style={styles.buttonText}>Return to Review Home</Text>
         </TouchableOpacity>
       </View>
     );
@@ -124,33 +152,30 @@ export default function ReviewSessionScreen({ route, navigation }) {
       />
       
       {isRevealed && (
-        <View style={styles.ratingContainer}>
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.ratingButton, styles.againButton]}
             onPress={() => handleRate(FsrsRating.Again)}
           >
-            <Text style={styles.ratingButtonText}>Again</Text>
+            <Text style={styles.buttonText}>Again</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
             style={[styles.ratingButton, styles.hardButton]}
             onPress={() => handleRate(FsrsRating.Hard)}
           >
-            <Text style={styles.ratingButtonText}>Hard</Text>
+            <Text style={styles.buttonText}>Hard</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
             style={[styles.ratingButton, styles.goodButton]}
             onPress={() => handleRate(FsrsRating.Good)}
           >
-            <Text style={styles.ratingButtonText}>Good</Text>
+            <Text style={styles.buttonText}>Good</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
             style={[styles.ratingButton, styles.easyButton]}
             onPress={() => handleRate(FsrsRating.Easy)}
           >
-            <Text style={styles.ratingButtonText}>Easy</Text>
+            <Text style={styles.buttonText}>Easy</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -182,7 +207,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  ratingContainer: {
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
@@ -195,11 +220,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 4,
   },
-  ratingButtonText: {
-    color: theme.dark,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   againButton: {
     backgroundColor: '#FF4B4B',
   },
@@ -211,5 +231,9 @@ const styles = StyleSheet.create({
   },
   easyButton: {
     backgroundColor: '#2196F3',
+  },
+  headerButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 }); 

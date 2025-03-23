@@ -23,6 +23,7 @@ import DeckSelectionScreen from './src/screens/DeckSelectionScreen';
 import EditDeckScreen from './src/screens/EditDeckScreen';
 import { theme } from './src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { UserProvider } from './src/contexts/UserContext';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -131,14 +132,16 @@ function ReviewStack() {
         name="ReviewHome" 
         component={ReviewHomeScreen}
         options={{
-          title: 'Review'
+          title: 'Review',
+          headerLeft: () => null
         }}
       />
       <Stack.Screen 
         name="ReviewSession" 
         component={ReviewSessionScreen}
         options={{
-          title: 'Review Cards'
+          title: 'Review Cards',
+          headerLeft: undefined
         }}
       />
     </Stack.Navigator>
@@ -221,13 +224,15 @@ function Navigation() {
 function App() {
   return (
     <AuthProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={{ flex: 1, backgroundColor: theme.dark }}>
-          <SafeAreaProvider>
-            <Navigation />
-          </SafeAreaProvider>
-        </View>
-      </GestureHandlerRootView>
+      <UserProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: theme.dark }}>
+            <SafeAreaProvider>
+              <Navigation />
+            </SafeAreaProvider>
+          </View>
+        </GestureHandlerRootView>
+      </UserProvider>
     </AuthProvider>
   );
 }
