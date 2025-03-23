@@ -89,8 +89,9 @@ export default function ImportScreen({ route, navigation }) {
       // Import cards one by one to show progress
       for (const card of cards) {
         await createCard({
-          ...card,
-          deck_id: deckId,
+          front: card.front,
+          back: card.back,
+          deckId: deckId,
         });
         imported++;
         setProgress((imported / cards.length) * 100);
@@ -225,6 +226,7 @@ const styles = StyleSheet.create({
   },
   cardList: {
     flex: 1,
+    marginBottom: 20,
   },
   cardPreview: {
     backgroundColor: theme.surface,
@@ -246,35 +248,34 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     minHeight: 40,
   },
+  importButtonContainer: {
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+    backgroundColor: theme.dark,
+  },
+  importButton: {
+    backgroundColor: theme.primary,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  importButtonText: {
+    color: theme.dark,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: 15,
+  },
+  progressIndicator: {
+    marginRight: 10,
   },
   progressText: {
     color: theme.text,
     fontSize: 16,
-    marginLeft: 10,
-  },
-  importButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  importButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  importButtonText: {
-    color: theme.dark,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  progressIndicator: {
-    marginRight: 10,
   },
 }); 
