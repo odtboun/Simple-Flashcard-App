@@ -17,6 +17,7 @@ export default function DeckDetailScreen({ route, navigation }) {
   const { deck } = route.params;
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     // Set up the header right button
@@ -46,14 +47,19 @@ export default function DeckDetailScreen({ route, navigation }) {
 
   const loadCards = async () => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
       const fetchedCards = await getCardsInDeck(deck.id);
       setCards(fetchedCards);
     } catch (error) {
       console.error('Error loading cards:', error);
-      Alert.alert('Error', 'Failed to load cards');
+      if (initialLoad) {
+        setCards([]);
+      }
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -94,7 +100,7 @@ export default function DeckDetailScreen({ route, navigation }) {
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.statusText}>
-            Next review: {new Date(item.next_review).toLocaleDateString()}
+            Next review: {new Date(item.due).toLocaleDateString()}
           </Text>
           <Text style={styles.gradeText}>
             Grade: {Math.round(item.easiness * 10) / 10}
@@ -119,7 +125,7 @@ export default function DeckDetailScreen({ route, navigation }) {
     </View>
   );
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />
@@ -137,7 +143,7 @@ export default function DeckDetailScreen({ route, navigation }) {
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>
-              {cards.filter(card => new Date(card.next_review) <= new Date()).length}
+              {cards.filter(card => new Date(card.due) <= new Date()).length}
             </Text>
             <Text style={styles.statLabel}>Due Today</Text>
           </View>
@@ -171,7 +177,7 @@ export default function DeckDetailScreen({ route, navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, styles.addButton]}
-          onPress={() => navigation.navigate('AddCard', { deckId: deck.id })}
+          onPress={() => navigation.navigate('AddManual', { deckId: deck.id })}
         >
           <Text style={styles.buttonText}>Add Card</Text>
         </TouchableOpacity>

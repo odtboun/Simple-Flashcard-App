@@ -15,6 +15,7 @@ export default function DeckSelectionScreen({ route, navigation }) {
   const { mode } = route.params;
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     loadDecks();
@@ -22,14 +23,19 @@ export default function DeckSelectionScreen({ route, navigation }) {
 
   const loadDecks = async () => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
       const fetchedDecks = await getDecks();
       setDecks(fetchedDecks);
     } catch (error) {
       console.error('Error loading decks:', error);
-      Alert.alert('Error', 'Failed to load decks');
+      if (initialLoad) {
+        setDecks([]);
+      }
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -60,7 +66,7 @@ export default function DeckSelectionScreen({ route, navigation }) {
     </TouchableOpacity>
   );
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />

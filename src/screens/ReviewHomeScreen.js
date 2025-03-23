@@ -15,6 +15,7 @@ export default function ReviewHomeScreen({ navigation }) {
   const { user } = useUser();
   const [dueCards, setDueCards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [stats, setStats] = useState({
     newCount: 0,
     learningCount: 0,
@@ -36,7 +37,10 @@ export default function ReviewHomeScreen({ navigation }) {
 
   const loadDueCards = async () => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
+      
       const cards = await getDueCards();
       setDueCards(cards);
 
@@ -50,8 +54,18 @@ export default function ReviewHomeScreen({ navigation }) {
       setStats(newStats);
     } catch (error) {
       console.error('Error loading due cards:', error);
+      if (initialLoad) {
+        setDueCards([]);
+        setStats({
+          newCount: 0,
+          learningCount: 0,
+          reviewCount: 0,
+          relearningCount: 0,
+        });
+      }
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -125,7 +139,7 @@ export default function ReviewHomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />

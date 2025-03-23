@@ -16,6 +16,7 @@ export default function AccountScreen() {
   const { user, signOut } = useAuth();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -25,14 +26,19 @@ export default function AccountScreen() {
 
   const loadProfile = async () => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
       const profile = await getUserProfile();
       setName(profile.name || '');
     } catch (error) {
       console.error('Error loading profile:', error);
-      Alert.alert('Error', 'Failed to load profile');
+      if (initialLoad) {
+        setName('');
+      }
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -67,7 +73,7 @@ export default function AccountScreen() {
     );
   };
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />

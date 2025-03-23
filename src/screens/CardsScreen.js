@@ -6,6 +6,7 @@ import { theme } from '../utils/theme';
 export default function CardsScreen({ navigation }) {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     loadCards();
@@ -21,14 +22,19 @@ export default function CardsScreen({ navigation }) {
 
   const loadCards = async () => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
       const fetchedCards = await getCards();
       setCards(fetchedCards);
     } catch (error) {
       console.error('Error loading cards:', error);
-      Alert.alert('Error', 'Failed to load cards');
+      if (initialLoad) {
+        setCards([]);
+      }
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -120,7 +126,7 @@ export default function CardsScreen({ navigation }) {
     </View>
   );
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.primary} />
