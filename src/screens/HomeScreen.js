@@ -21,6 +21,7 @@ export default function HomeScreen({ navigation }) {
   const [totalCount, setTotalCount] = useState(0);
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     // Set up the header right button
@@ -50,13 +51,16 @@ export default function HomeScreen({ navigation }) {
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      }
 
       // Wait for user session to be ready
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('No user found, skipping data load');
         setLoading(false);
+        setInitialLoad(false);
         return;
       }
 
@@ -76,12 +80,15 @@ export default function HomeScreen({ navigation }) {
       setDecks(decksData);
     } catch (error) {
       console.error('Error loading data:', error);
-      // Show empty state even if there's an error
-      setTotalCount(0);
-      setDueCount(0);
-      setDecks([]);
+      if (initialLoad) {
+        // Only clear data on initial load errors
+        setTotalCount(0);
+        setDueCount(0);
+        setDecks([]);
+      }
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -140,7 +147,7 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />

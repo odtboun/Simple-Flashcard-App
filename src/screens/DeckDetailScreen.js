@@ -99,12 +99,23 @@ export default function DeckDetailScreen({ route, navigation }) {
           <Text style={styles.cardText}>{item.back}</Text>
         </View>
         <View style={styles.cardInfo}>
-          <Text style={styles.statusText}>
-            Next review: {new Date(item.due).toLocaleDateString()}
-          </Text>
+          <View style={styles.cardMetaRow}>
+            <Text style={styles.statusText}>
+              Next review: {new Date(item.due).toLocaleDateString()}
+            </Text>
+            <View style={[
+              styles.stateBadge,
+              item.state === 'New' && styles.newBadge,
+              item.state === 'Learning' && styles.learningBadge,
+              item.state === 'Review' && styles.reviewBadge,
+              item.state === 'Relearning' && styles.relearningBadge,
+            ]}>
+              <Text style={styles.stateBadgeText}>{item.state}</Text>
+            </View>
+          </View>
           <Text style={styles.gradeText}>
-            Grade: {Math.round(item.easiness * 10) / 10}
-            {item.repetitions > 0 ? ` (${item.repetitions} reviews)` : ''}
+            Difficulty: {Math.round(item.difficulty * 10) / 10}
+            {item.reps > 0 ? ` (${item.reps} reviews)` : ''}
           </Text>
         </View>
       </View>
@@ -170,7 +181,20 @@ export default function DeckDetailScreen({ route, navigation }) {
             styles.reviewButton,
             cards.length === 0 && styles.buttonDisabled
           ]}
-          onPress={() => navigation.navigate('ReviewSession', { deckId: deck.id })}
+          onPress={() => {
+            // First navigate to the Review tab's initial screen
+            navigation.navigate('Review', {
+              screen: 'ReviewHome'
+            });
+            // Then after a short delay, navigate to the ReviewSession
+            // This ensures the Review tab is properly focused
+            setTimeout(() => {
+              navigation.navigate('Review', {
+                screen: 'ReviewSession',
+                params: { deckId: deck.id }
+              });
+            }, 100);
+          }}
           disabled={cards.length === 0}
         >
           <Text style={styles.buttonText}>Review Deck</Text>
@@ -254,6 +278,12 @@ const styles = StyleSheet.create({
     borderTopColor: theme.border,
     paddingTop: 12,
   },
+  cardMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   statusText: {
     fontSize: 14,
     color: theme.text,
@@ -324,5 +354,27 @@ const styles = StyleSheet.create({
     color: theme.textSecondary,
     textAlign: 'center',
     marginTop: 20,
+  },
+  stateBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  stateBadgeText: {
+    color: theme.dark,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  newBadge: {
+    backgroundColor: '#2196F3',
+  },
+  learningBadge: {
+    backgroundColor: '#FF9F46',
+  },
+  reviewBadge: {
+    backgroundColor: '#4CAF50',
+  },
+  relearningBadge: {
+    backgroundColor: '#FF4B4B',
   },
 }); 

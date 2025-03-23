@@ -58,7 +58,7 @@ export async function createCard({ front, back, deckId }) {
       back,
       deck_id: deckId,
       user_id: user.id,
-      // FSRS properties
+      // FSRS properties - use values directly from FSRS
       due: fsrsCard.due,
       stability: fsrsCard.stability,
       difficulty: fsrsCard.difficulty,
