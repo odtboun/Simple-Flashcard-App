@@ -1,71 +1,98 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, TextInput } from 'react-native';
-import { getDueCards, updateCardReview } from '../services/cardService';
-import { getDueCardsInDeck } from '../services/deckService';
-import { calculateNextReview } from '../utils/spacedRepetition';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { useUser } from '../contexts/UserContext';
 import { theme } from '../utils/theme';
+import { 
+  FsrsRating, 
+  getCardForReview, 
+  createReviewLog, 
+  scheduleCardWithRating,
+  updateCardSchedule 
+} from '../services/fsrsService';
+import { getDueCardsInDeck } from '../services/deckService';
+import Flashcard from '../components/Flashcard';
 
-const { width } = Dimensions.get('window');
-
-export default function ReviewScreen({ route, navigation }) {
-  const deckId = route.params?.deckId;
-  const [cards, setCards] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [loading, setLoading] = useState(true);
+export default function ReviewSessionScreen({ route, navigation }) {
+  const { deckId } = route.params;
+  const { user } = useUser();
+  const [currentCard, setCurrentCard] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRevealed, setIsRevealed] = useState(false);
 
   useEffect(() => {
-    loadCards();
+    loadNextCard();
   }, []);
 
-  const loadCards = async () => {
+  const loadNextCard = async () => {
     try {
-      setLoading(true);
-      const dueCards = deckId 
-        ? await getDueCardsInDeck(deckId)
-        : await getDueCards();
-      setCards(dueCards);
-    } catch (error) {
-      console.error('Error loading cards:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setIsLoading(true);
+      const cards = await getDueCardsInDeck(deckId);
 
-  const flipCard = () => {
-    setIsFlipped(!isFlipped);
-  };
-
-  const handleResponse = async (quality) => {
-    if (cards.length === 0) return;
-
-    const currentCard = cards[currentIndex];
-    const { repetitions, easiness, interval } = calculateNextReview(
-      quality,
-      currentCard.repetitions,
-      currentCard.easiness,
-      currentCard.interval
-    );
-
-    try {
-      await updateCardReview(currentCard.id, {
-        easiness,
-        interval,
-        repetitions,
-      });
-
-      if (currentIndex < cards.length - 1) {
-        setIsFlipped(false);
-        setCurrentIndex(currentIndex + 1);
+      if (cards && cards.length > 0) {
+        setCurrentCard(cards[0]);
       } else {
-        navigation.goBack();
+        Alert.alert(
+          'Review Complete',
+          'No more cards due for review in this deck!',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
       }
     } catch (error) {
-      console.error('Error updating card:', error);
+      console.error('Error loading next card:', error);
+      Alert.alert('Error', 'Failed to load next card');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (loading) {
+  const handleRate = async (rating) => {
+    try {
+      setIsLoading(true);
+      
+      // Prepare card data for FSRS
+      const fsrsCard = {
+        due: currentCard.due || new Date().toISOString(),
+        stability: currentCard.stability || 0,
+        difficulty: currentCard.difficulty || 0,
+        elapsed_days: currentCard.elapsed_days || 0,
+        scheduled_days: currentCard.scheduled_days || 0,
+        reps: currentCard.reps || 0,
+        lapses: currentCard.lapses || 0,
+        state: currentCard.state || 'New',
+      };
+      
+      // Get scheduling info from FSRS
+      const schedulingInfo = scheduleCardWithRating(fsrsCard, rating);
+      
+      // Update card first
+      await updateCardSchedule(currentCard.id, schedulingInfo);
+      
+      // Then create review log
+      await createReviewLog(currentCard.id, rating, schedulingInfo);
+      
+      // Load next card
+      setIsRevealed(false);
+      await loadNextCard();
+    } catch (error) {
+      console.error('Error rating card:', error);
+      if (error.code === 'PGRST116') {
+        Alert.alert('Error', 'Could not find the card to update. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to save review. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />
@@ -73,74 +100,60 @@ export default function ReviewScreen({ route, navigation }) {
     );
   }
 
-  if (cards.length === 0) {
+  if (!currentCard) {
     return (
       <View style={styles.container}>
-        <Text style={styles.noCards}>No cards due for review!</Text>
+        <Text style={styles.message}>No cards due for review!</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.buttonText}>Return to Deck</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.progress}>
-        <Text style={styles.progressText}>
-          Card {currentIndex + 1} of {cards.length}
-        </Text>
-      </View>
-
-      <View style={styles.cardWrapper}>
-        <View style={styles.cardContainer}>
-          <View style={styles.card}>
-            <TextInput
-              style={[styles.cardText, styles.selectableText]}
-              value={isFlipped ? cards[currentIndex].back : cards[currentIndex].front}
-              multiline
-              editable={false}
-              selectTextOnFocus={true}
-              contextMenuHidden={false}
-              selectionColor={theme.primary}
-            />
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.controlsContainer}>
-        <TouchableOpacity style={styles.flipButton} onPress={flipCard}>
-          <Text style={styles.flipButtonText}>Flip Card</Text>
-        </TouchableOpacity>
-
-        <View style={[styles.buttonContainer, { opacity: isFlipped ? 1 : 0 }]}>
+      <Flashcard
+        front={currentCard.front}
+        back={currentCard.back}
+        isRevealed={isRevealed}
+        onPress={() => setIsRevealed(!isRevealed)}
+      />
+      
+      {isRevealed && (
+        <View style={styles.ratingContainer}>
           <TouchableOpacity
-            style={[styles.responseButton, styles.againButton]}
-            onPress={() => handleResponse(0)}
-            disabled={!isFlipped}
+            style={[styles.ratingButton, styles.againButton]}
+            onPress={() => handleRate(FsrsRating.Again)}
           >
-            <Text style={styles.responseButtonText}>Again</Text>
+            <Text style={styles.ratingButtonText}>Again</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
-            style={[styles.responseButton, styles.hardButton]}
-            onPress={() => handleResponse(3)}
-            disabled={!isFlipped}
+            style={[styles.ratingButton, styles.hardButton]}
+            onPress={() => handleRate(FsrsRating.Hard)}
           >
-            <Text style={styles.responseButtonText}>Hard</Text>
+            <Text style={styles.ratingButtonText}>Hard</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
-            style={[styles.responseButton, styles.goodButton]}
-            onPress={() => handleResponse(4)}
-            disabled={!isFlipped}
+            style={[styles.ratingButton, styles.goodButton]}
+            onPress={() => handleRate(FsrsRating.Good)}
           >
-            <Text style={styles.responseButtonText}>Good</Text>
+            <Text style={styles.ratingButtonText}>Good</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
-            style={[styles.responseButton, styles.easyButton]}
-            onPress={() => handleResponse(5)}
-            disabled={!isFlipped}
+            style={[styles.ratingButton, styles.easyButton]}
+            onPress={() => handleRate(FsrsRating.Easy)}
           >
-            <Text style={styles.responseButtonText}>Easy</Text>
+            <Text style={styles.ratingButtonText}>Easy</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -149,95 +162,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.dark,
-  },
-  progress: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  progressText: {
-    color: theme.text,
-    fontSize: 16,
-  },
-  cardWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  cardContainer: {
-    width: width - 32,
-    aspectRatio: 3/2,
-    backgroundColor: theme.surface,
-    borderRadius: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  card: {
-    flex: 1,
     padding: 16,
     justifyContent: 'center',
   },
-  cardText: {
+  message: {
     color: theme.text,
-    fontSize: 20,
+    fontSize: 18,
     textAlign: 'center',
+    marginBottom: 20,
   },
-  selectableText: {
-    padding: 16,
-  },
-  controlsContainer: {
-    padding: 16,
-  },
-  flipButton: {
-    backgroundColor: theme.surface,
+  button: {
+    backgroundColor: theme.primary,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 16,
   },
-  flipButtonText: {
-    color: theme.text,
-    fontSize: 18,
+  buttonText: {
+    color: theme.dark,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  buttonContainer: {
+  ratingContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 20,
+    paddingHorizontal: 16,
   },
-  responseButton: {
+  ratingButton: {
     flex: 1,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 4,
   },
-  responseButtonText: {
+  ratingButtonText: {
     color: theme.dark,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   againButton: {
-    backgroundColor: theme.error,
+    backgroundColor: '#FF4B4B',
   },
   hardButton: {
-    backgroundColor: '#FFA726',
+    backgroundColor: '#FF9F46',
   },
   goodButton: {
-    backgroundColor: theme.primary,
+    backgroundColor: '#4CAF50',
   },
   easyButton: {
-    backgroundColor: '#66BB6A',
-  },
-  noCards: {
-    color: theme.text,
-    fontSize: 18,
-    textAlign: 'center',
-    marginTop: 40,
+    backgroundColor: '#2196F3',
   },
 }); 

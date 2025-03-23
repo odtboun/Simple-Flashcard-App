@@ -4,54 +4,123 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
-import { getDueDecks } from '../services/deckService';
-import { getDueCards } from '../services/cardService';
+import { useUser } from '../contexts/UserContext';
 import { theme } from '../utils/theme';
+import { getDueCards } from '../services/fsrsService';
 
 export default function ReviewHomeScreen({ navigation }) {
-  const [dueDecks, setDueDecks] = useState([]);
-  const [totalDueCards, setTotalDueCards] = useState(0);
+  const { user } = useUser();
+  const [dueCards, setDueCards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    newCount: 0,
+    learningCount: 0,
+    reviewCount: 0,
+    relearningCount: 0,
+  });
 
   useEffect(() => {
-    loadDueData();
+    loadDueCards();
   }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      loadDueData();
+      loadDueCards();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  const loadDueData = async () => {
+  const loadDueCards = async () => {
     try {
       setLoading(true);
-      const [decks, cards] = await Promise.all([
-        getDueDecks(),
-        getDueCards(),
-      ]);
-      setDueDecks(decks);
-      setTotalDueCards(cards.length);
+      const cards = await getDueCards();
+      setDueCards(cards);
+
+      // Calculate stats
+      const newStats = {
+        newCount: cards.filter(card => card.state === 'New').length,
+        learningCount: cards.filter(card => card.state === 'Learning').length,
+        reviewCount: cards.filter(card => card.state === 'Review').length,
+        relearningCount: cards.filter(card => card.state === 'Relearning').length,
+      };
+      setStats(newStats);
     } catch (error) {
-      console.error('Error loading due data:', error);
+      console.error('Error loading due cards:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderDeck = ({ item }) => (
+  const groupCardsByDeck = () => {
+    const grouped = {};
+    dueCards.forEach(card => {
+      if (!card.deck) return; // Skip cards without a deck
+      
+      if (!grouped[card.deck.id]) {
+        grouped[card.deck.id] = {
+          id: card.deck.id,
+          name: card.deck.name,
+          cards: [],
+          stats: {
+            newCount: 0,
+            learningCount: 0,
+            reviewCount: 0,
+            relearningCount: 0,
+          },
+        };
+      }
+      grouped[card.deck.id].cards.push(card);
+      
+      // Update deck stats
+      switch (card.state) {
+        case 'New':
+          grouped[card.deck.id].stats.newCount++;
+          break;
+        case 'Learning':
+          grouped[card.deck.id].stats.learningCount++;
+          break;
+        case 'Review':
+          grouped[card.deck.id].stats.reviewCount++;
+          break;
+        case 'Relearning':
+          grouped[card.deck.id].stats.relearningCount++;
+          break;
+      }
+    });
+    return Object.values(grouped);
+  };
+
+  const renderDeckItem = ({ item }) => (
     <TouchableOpacity
       style={styles.deckItem}
       onPress={() => navigation.navigate('ReviewSession', { deckId: item.id })}
     >
-      <View style={styles.deckContent}>
-        <Text style={styles.deckName}>{item.name}</Text>
-        <Text style={styles.dueCount}>{item.due_cards} cards due</Text>
+      <Text style={styles.deckName}>{item.name}</Text>
+      <View style={styles.statsContainer}>
+        {item.stats.newCount > 0 && (
+          <View style={[styles.statBadge, styles.newBadge]}>
+            <Text style={styles.statText}>{item.stats.newCount} New</Text>
+          </View>
+        )}
+        {item.stats.learningCount > 0 && (
+          <View style={[styles.statBadge, styles.learningBadge]}>
+            <Text style={styles.statText}>{item.stats.learningCount} Learning</Text>
+          </View>
+        )}
+        {item.stats.reviewCount > 0 && (
+          <View style={[styles.statBadge, styles.reviewBadge]}>
+            <Text style={styles.statText}>{item.stats.reviewCount} Review</Text>
+          </View>
+        )}
+        {item.stats.relearningCount > 0 && (
+          <View style={[styles.statBadge, styles.relearningBadge]}>
+            <Text style={styles.statText}>{item.stats.relearningCount} Relearning</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -64,42 +133,50 @@ export default function ReviewHomeScreen({ navigation }) {
     );
   }
 
-  if (totalDueCards === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.noCards}>No cards due for review!</Text>
-      </View>
-    );
-  }
+  const dueDecks = groupCardsByDeck();
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Time to review!</Text>
-        <Text style={styles.subtitle}>
-          You have {totalDueCards} card{totalDueCards === 1 ? '' : 's'} due for review
-        </Text>
+        <Text style={styles.title}>Review Queue</Text>
+        <View style={styles.totalStats}>
+          {stats.newCount > 0 && (
+            <View style={[styles.statBadge, styles.newBadge]}>
+              <Text style={styles.statText}>{stats.newCount} New</Text>
+            </View>
+          )}
+          {stats.learningCount > 0 && (
+            <View style={[styles.statBadge, styles.learningBadge]}>
+              <Text style={styles.statText}>{stats.learningCount} Learning</Text>
+            </View>
+          )}
+          {stats.reviewCount > 0 && (
+            <View style={[styles.statBadge, styles.reviewBadge]}>
+              <Text style={styles.statText}>{stats.reviewCount} Review</Text>
+            </View>
+          )}
+          {stats.relearningCount > 0 && (
+            <View style={[styles.statBadge, styles.relearningBadge]}>
+              <Text style={styles.statText}>{stats.relearningCount} Relearning</Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.reviewAllButton}
-        onPress={() => navigation.navigate('ReviewSession')}
-      >
-        <Text style={styles.reviewAllButtonText}>
-          Review All Due Cards ({totalDueCards})
-        </Text>
-      </TouchableOpacity>
-
-      {dueDecks.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Review by Deck</Text>
-          <FlatList
-            data={dueDecks}
-            renderItem={renderDeck}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.listContainer}
-          />
-        </>
+      {dueDecks.length > 0 ? (
+        <FlatList
+          data={dueDecks}
+          renderItem={renderDeckItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.list}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No cards due for review!</Text>
+          <Text style={styles.emptySubtext}>
+            Great job! Take a break or add more cards to study.
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -111,66 +188,78 @@ const styles = StyleSheet.create({
     backgroundColor: theme.dark,
   },
   header: {
-    padding: 20,
-    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: theme.text,
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  subtitle: {
-    fontSize: 16,
-    color: theme.textSecondary,
-    textAlign: 'center',
+  totalStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  reviewAllButton: {
-    backgroundColor: theme.primary,
-    margin: 20,
+  list: {
     padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  reviewAllButtonText: {
-    color: theme.dark,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  listContainer: {
-    padding: 20,
-    paddingTop: 0,
   },
   deckItem: {
     backgroundColor: theme.surface,
     borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  deckContent: {
     padding: 16,
+    marginBottom: 12,
   },
   deckName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.text,
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  dueCount: {
+  statsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  statBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  statText: {
+    color: theme.dark,
     fontSize: 14,
-    color: theme.textSecondary,
+    fontWeight: 'bold',
   },
-  noCards: {
+  newBadge: {
+    backgroundColor: '#2196F3',
+  },
+  learningBadge: {
+    backgroundColor: '#FF9F46',
+  },
+  reviewBadge: {
+    backgroundColor: '#4CAF50',
+  },
+  relearningBadge: {
+    backgroundColor: '#FF4B4B',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: theme.text,
-    fontSize: 18,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    color: theme.textSecondary,
     textAlign: 'center',
   },
 }); 

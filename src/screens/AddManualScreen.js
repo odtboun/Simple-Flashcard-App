@@ -20,7 +20,7 @@ export default function AddScreen({ route, navigation }) {
       await createCard({
         front: front.trim(),
         back: back.trim(),
-        deck_id: deckId,
+        deckId: deckId,
       });
       
       setFront('');

@@ -10,10 +10,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCards, getDueCards } from '../services/cardService';
-import { getDecks, deleteDeck } from '../services/deckService';
+import { getDecks } from '../services/deckService';
 import { theme } from '../utils/theme';
+import { useUser } from '../contexts/UserContext';
+import { supabase } from '../lib/supabase';
 
 export default function HomeScreen({ navigation }) {
+  const { user } = useUser();
   const [dueCount, setDueCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [decks, setDecks] = useState([]);
@@ -48,17 +51,35 @@ export default function HomeScreen({ navigation }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [allCards, dueCardsData, decksData] = await Promise.all([
-        getCards(),
-        getDueCards(),
-        getDecks(),
-      ]);
+
+      // Wait for user session to be ready
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user found, skipping data load');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loading data for user:', user.id);
+
+      const decksData = await getDecks();
+      console.log('Loaded decks:', decksData);
+
+      const allCards = await getCards();
+      console.log('Loaded all cards:', allCards);
+
+      const dueCardsData = await getDueCards();
+      console.log('Loaded due cards:', dueCardsData);
       
       setTotalCount(allCards.length);
       setDueCount(dueCardsData.length);
       setDecks(decksData);
     } catch (error) {
       console.error('Error loading data:', error);
+      // Show empty state even if there's an error
+      setTotalCount(0);
+      setDueCount(0);
+      setDecks([]);
     } finally {
       setLoading(false);
     }
@@ -89,32 +110,6 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  const handleDeleteDeck = async (deckId) => {
-    Alert.alert(
-      "Delete Deck",
-      "Are you sure you want to delete this deck? All cards in this deck will be deleted.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteDeck(deckId);
-              setDecks(decks.filter(deck => deck.id !== deckId));
-            } catch (error) {
-              console.error('Error deleting deck:', error);
-              Alert.alert('Error', 'Failed to delete deck');
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const renderDeck = ({ item }) => (
     <TouchableOpacity
       style={styles.deckItem}
@@ -123,12 +118,6 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.deckContent}>
         <View style={styles.deckHeader}>
           <Text style={styles.deckName}>{item.name}</Text>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteDeck(item.id)}
-          >
-            <Ionicons name="trash-outline" size={20} color={theme.error} />
-          </TouchableOpacity>
         </View>
         
         {item.description && (
@@ -254,9 +243,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.text,
     flex: 1,
-  },
-  deleteButton: {
-    padding: 8,
   },
   deckDescription: {
     fontSize: 14,

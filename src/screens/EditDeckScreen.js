@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { updateDeck } from '../services/deckService';
+import { updateDeck, deleteDeck } from '../services/deckService';
 import { theme } from '../utils/theme';
 
 export default function EditDeckScreen({ route, navigation }) {
@@ -38,6 +38,38 @@ export default function EditDeckScreen({ route, navigation }) {
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Deck",
+      "Are you sure you want to delete this deck? All cards in this deck will be deleted.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteDeck(deck.id);
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+              });
+            } catch (error) {
+              console.error('Error deleting deck:', error);
+              Alert.alert('Error', 'Failed to delete deck');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.form}>
@@ -64,17 +96,27 @@ export default function EditDeckScreen({ route, navigation }) {
         />
       </View>
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSave}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={theme.dark} />
-        ) : (
-          <Text style={styles.buttonText}>Save Changes</Text>
-        )}
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.saveButton, loading && styles.buttonDisabled]}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={theme.dark} />
+          ) : (
+            <Text style={styles.buttonText}>Save Changes</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.deleteButton, loading && styles.buttonDisabled]}
+          onPress={handleDelete}
+          disabled={loading}
+        >
+          <Text style={[styles.buttonText, styles.deleteButtonText]}>Delete Deck</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -106,11 +148,19 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
+  buttonContainer: {
+    gap: 12,
+  },
   button: {
-    backgroundColor: theme.primary,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  saveButton: {
+    backgroundColor: theme.primary,
+  },
+  deleteButton: {
+    backgroundColor: theme.error,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -119,5 +169,8 @@ const styles = StyleSheet.create({
     color: theme.dark,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  deleteButtonText: {
+    color: theme.text,
   },
 }); 

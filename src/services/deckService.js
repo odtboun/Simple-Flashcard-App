@@ -4,18 +4,57 @@ export async function getDecks() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No user found');
 
-  const { data, error } = await supabase
+  console.log('Fetching decks for user:', user.id);
+
+  // First get all decks
+  const { data: decks, error: decksError } = await supabase
     .from('decks')
     .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+    .eq('user_id', user.id);
 
-  if (error) {
-    console.error('Error fetching decks:', error);
-    throw error;
+  if (decksError) {
+    console.error('Error fetching decks:', decksError);
+    throw decksError;
   }
 
-  return data || [];
+  console.log('Raw decks:', decks);
+
+  if (!decks || decks.length === 0) {
+    return [];
+  }
+
+  // Then get all cards for these decks
+  const { data: cards, error: cardsError } = await supabase
+    .from('cards')
+    .select('*')
+    .in('deck_id', decks.map(d => d.id));
+
+  if (cardsError) {
+    console.error('Error fetching cards:', cardsError);
+    throw cardsError;
+  }
+
+  console.log('Raw cards:', cards);
+
+  // Group cards by deck
+  const cardsByDeck = {};
+  cards?.forEach(card => {
+    if (!cardsByDeck[card.deck_id]) {
+      cardsByDeck[card.deck_id] = [];
+    }
+    cardsByDeck[card.deck_id].push(card);
+  });
+
+  // Calculate counts
+  const now = new Date();
+  const transformedData = decks.map(deck => ({
+    ...deck,
+    total_cards: cardsByDeck[deck.id]?.length || 0,
+    due_cards: cardsByDeck[deck.id]?.filter(card => card.due && new Date(card.due) <= now).length || 0
+  }));
+
+  console.log('Final transformed data:', transformedData);
+  return transformedData;
 }
 
 export async function getDeck(deckId) {
@@ -144,8 +183,8 @@ export async function getDueCardsInDeck(deckId) {
     .select('*')
     .eq('deck_id', deckId)
     .eq('user_id', user.id)
-    .lte('next_review', now)
-    .order('next_review', { ascending: true });
+    .lte('due', now)
+    .order('due', { ascending: true });
 
   if (error) {
     console.error('Error fetching due cards in deck:', error);
