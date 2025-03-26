@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserProfile, updateUserProfile } from '../services/userService';
+import { getUserProfile, updateUserProfile, deleteAccount } from '../services/userService';
 import { theme } from '../utils/theme';
 
 export default function AccountScreen() {
@@ -73,6 +73,35 @@ export default function AccountScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This will permanently delete all your data and cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteAccount();
+              signOut(); // Sign out after successful deletion
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
+              setLoading(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   if (loading && initialLoad) {
     return (
       <View style={styles.container}>
@@ -115,6 +144,13 @@ export default function AccountScreen() {
           onPress={handleLogout}
         >
           <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={handleDeleteAccount}
+        >
+          <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -187,6 +223,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   logoutButtonText: {
+    color: theme.dark,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  deleteAccountButton: {
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  deleteAccountButtonText: {
     color: theme.dark,
     fontSize: 16,
     fontWeight: 'bold',
