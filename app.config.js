@@ -34,5 +34,11 @@ export default {
         projectId: "dbf288a2-6f5f-4eea-bf7f-f4681b1fd860"
       }
     },
+    runtimeVersion: {
+      policy: "sdkVersion"
+    },
+    updates: {
+      url: "https://u.expo.dev/dbf288a2-6f5f-4eea-bf7f-f4681b1fd860"
+    }
   }
 }; 
