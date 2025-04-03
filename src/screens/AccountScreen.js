@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { userService } from '../services/userService';
+import { getUserProfile, signOut, deleteAccount } from '../services/userService';
 import { theme } from '../utils/theme';
 
 export default function AccountScreen({ navigation }) {
@@ -12,8 +12,8 @@ export default function AccountScreen({ navigation }) {
 
     const loadUser = async () => {
         try {
-            const currentUser = await userService.getCurrentUser();
-            setUser(currentUser);
+            const userProfile = await getUserProfile();
+            setUser(userProfile);
         } catch (error) {
             console.error('Error loading user:', error);
         }
@@ -21,7 +21,7 @@ export default function AccountScreen({ navigation }) {
 
     const handleSignOut = async () => {
         try {
-            await userService.signOut();
+            await signOut();
             // The AuthProvider will automatically handle the navigation
             // when it detects the user is null
         } catch (error) {
@@ -44,7 +44,7 @@ export default function AccountScreen({ navigation }) {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await userService.deleteAccount();
+                            await deleteAccount();
                             // The AuthProvider will automatically handle the navigation
                             // when it detects the user is null
                         } catch (error) {

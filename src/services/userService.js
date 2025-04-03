@@ -25,6 +25,24 @@ export const userService = {
         return data;
     },
 
+    async getUserProfile() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('No user found');
+
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (error) throw error;
+        
+        return {
+            ...profile,
+            email: user.email
+        };
+    },
+
     async signOut() {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
@@ -35,33 +53,29 @@ export const userService = {
         if (userError) throw userError;
         if (!user) throw new Error('No user found');
 
-        // Delete all user data in the correct order to respect foreign key constraints
-        const { error: reviewLogsError } = await supabase
-            .from('review_logs')
-            .delete()
-            .eq('user_id', user.id);
-        if (reviewLogsError) throw reviewLogsError;
+        // Delete all user data in order (respecting foreign key constraints)
+        const deletions = [
+            // Delete review logs first (they reference cards)
+            supabase.from('review_logs').delete().eq('user_id', user.id),
+            
+            // Delete cards (they reference decks)
+            supabase.from('cards').delete().eq('user_id', user.id),
+            
+            // Delete decks
+            supabase.from('decks').delete().eq('user_id', user.id),
+            
+            // Delete profile
+            supabase.from('profiles').delete().eq('id', user.id),
+        ];
 
-        const { error: cardsError } = await supabase
-            .from('cards')
-            .delete()
-            .eq('user_id', user.id);
-        if (cardsError) throw cardsError;
+        // Execute all deletions
+        for (const deletion of deletions) {
+            const { error } = await deletion;
+            if (error) throw error;
+        }
 
-        const { error: decksError } = await supabase
-            .from('decks')
-            .delete()
-            .eq('user_id', user.id);
-        if (decksError) throw decksError;
-
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .delete()
-            .eq('id', user.id);
-        if (profileError) throw profileError;
-
-        // Finally, delete the auth user
-        const { error: deleteUserError } = await supabase.auth.admin.deleteUser(user.id);
-        if (deleteUserError) throw deleteUserError;
+        // Finally, delete the user account
+        const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+        if (deleteError) throw deleteError;
     }
 }; 

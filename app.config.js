@@ -5,6 +5,7 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     userInterfaceStyle: "dark",
+    icon: "./assets/icon/icon.png",
     assetBundlePatterns: [
       "**/*"
     ],
@@ -13,7 +14,8 @@ export default {
       bundleIdentifier: "com.omerdem.simpleflashcard",
       buildNumber: "1.0.0",
       infoPlist: {
-        ITSAppUsesNonExemptEncryption: false
+        ITSAppUsesNonExemptEncryption: false,
+        CFBundleIconName: "AppIcon"
       }
     },
     plugins: [
