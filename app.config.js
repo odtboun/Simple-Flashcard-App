@@ -39,6 +39,12 @@ export default {
     },
     updates: {
       url: "https://u.expo.dev/dbf288a2-6f5f-4eea-bf7f-f4681b1fd860"
+    },
+    icon: "./assets/ios/icon.png",
+    splash: {
+      image: "./assets/ios/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#000000"
     }
   }
 }; 

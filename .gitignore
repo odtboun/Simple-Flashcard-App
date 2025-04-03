@@ -41,10 +41,6 @@ yarn-error.log
 dist/
 web-build/
 
-# Environment variables
-.env
-.env.*
-
 # TypeScript
 *.tsbuildinfo
 
@@ -53,4 +49,28 @@ coverage/
 
 # Editor directories
 .vscode/
-.idea/ 
+.idea/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Environment variables
+.env
+.env.* 

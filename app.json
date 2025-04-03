@@ -18,6 +18,12 @@
     },
     "web": {
       "favicon": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d2143a76-cd56-4419-8edf-c9f37ea0e5ee"
+      }
+    },
+    "owner": "omerdem"
   }
-} 
+}

@@ -1,9 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-const supabaseUrl = 'https://yxpezkwoqevmyapknkjb.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4cGV6a3dvcWV2bXlhcGtua2piIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExNDAwMDMsImV4cCI6MjA1NjcxNjAwM30.Wys-UV9znkP3a_Z269bmr47mhhKbQEcGJw5db2aEsY0';
+const supabaseUrl = Constants.expoConfig.extra.supabaseUrl;
+const supabaseAnonKey = Constants.expoConfig.extra.supabaseAnonKey;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
 
 // Create a custom storage object that works for both web and mobile
 const customStorage = {
