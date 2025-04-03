@@ -22,12 +22,17 @@ export default {
         ITSAppUsesNonExemptEncryption: false
       }
     },
-    android: {
-      adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#000000"
-      }
-    },
+    plugins: [
+      'expo-document-picker',
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            deploymentTarget: '13.0'
+          }
+        }
+      ]
+    ],
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
