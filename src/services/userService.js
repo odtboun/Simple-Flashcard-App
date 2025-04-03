@@ -4,14 +4,18 @@ export async function getUserProfile() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No user found');
 
-  const { data, error } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
 
   if (error) throw error;
-  return data;
+  
+  return {
+    ...profile,
+    email: user.email
+  };
 }
 
 export async function updateUserProfile(updates) {
@@ -27,6 +31,11 @@ export async function updateUserProfile(updates) {
 
   if (error) throw error;
   return data;
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
 
 export async function deleteAccount() {
