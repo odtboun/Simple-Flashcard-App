@@ -3,10 +3,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, View, Text } from 'react-native';
+import { StatusBar, View, Text, StyleSheet, Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { UserProvider, useUser } from './src/contexts/UserContext';
 import HomeScreen from './src/screens/HomeScreen';
 import AddOptionsScreen from './src/screens/AddOptionsScreen';
 import AddManualScreen from './src/screens/AddManualScreen';
@@ -23,7 +24,6 @@ import DeckSelectionScreen from './src/screens/DeckSelectionScreen';
 import EditDeckScreen from './src/screens/EditDeckScreen';
 import { theme } from './src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { UserProvider } from './src/contexts/UserContext';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -151,24 +151,29 @@ function ReviewStack() {
 function TabNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.surface,
-          borderTopColor: theme.border,
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Review') {
+            iconName = focused ? 'book' : 'book-outline';
+          } else if (route.name === 'Account') {
+            iconName = focused ? 'person' : 'person-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textSecondary,
-      }}
+      })}
     >
       <Tab.Screen 
         name="Home" 
         component={HomeStack}
         options={{
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
         }}
       />
       <Tab.Screen 
@@ -176,9 +181,6 @@ function TabNavigator() {
         component={ReviewStack}
         options={{
           tabBarLabel: 'Review',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
-          ),
         }}
       />
       <Tab.Screen 
@@ -191,9 +193,6 @@ function TabNavigator() {
             backgroundColor: theme.dark,
           },
           headerTintColor: theme.text,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
         }}
       />
     </Tab.Navigator>
@@ -201,40 +200,78 @@ function TabNavigator() {
 }
 
 function Navigation() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, error: authError } = useAuth();
+  const { error: userError } = useUser();
+
+  // Show loading state
+  if (authLoading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (authError || userError) {
+    const errorMessage = authError || userError;
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>An error occurred: {errorMessage}</Text>
+        <Text style={styles.retryText}>Please try restarting the app.</Text>
+      </View>
+    );
+  }
 
   return (
-    <NavigationContainer
-      fallback={<Text style={{ color: theme.text }}>Loading...</Text>}
-    >
-      <StatusBar barStyle="light-content" />
-      {user ? <TabNavigator /> : (
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="Auth" component={AuthScreen} />
-        </Stack.Navigator>
-      )}
+    <NavigationContainer>
+      {user ? <TabNavigator /> : <AuthStack />}
     </NavigationContainer>
+  );
+}
+
+function AuthStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Auth" component={AuthScreen} />
+    </Stack.Navigator>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <UserProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: theme.dark }}>
-            <SafeAreaProvider>
-              <Navigation />
-            </SafeAreaProvider>
-          </View>
-        </GestureHandlerRootView>
-      </UserProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <UserProvider>
+          <Navigation />
+        </UserProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  retryText: {
+    fontSize: 14,
+    color: 'gray',
+    textAlign: 'center',
+  },
+});
 
 export default App; 
